@@ -24,8 +24,8 @@ Request Request::generateRandom(int min_time, int max_time) {
     return Request(in, out, t, type);
 }
 
-void Request::print() {
-    std::cout << "[" << ip_in << " -> " << ip_out
-              << " | time=" << time
-              << " | type=" << job_type << "]";
+void Request::print(std::ostream& os) {
+    os << "[" << ip_in << " -> " << ip_out
+       << " | time=" << time
+       << " | type=" << job_type << "]";
 }

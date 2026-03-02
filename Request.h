@@ -16,7 +16,7 @@ struct Request {
 
     static Request generateRandom(int min_time, int max_time);
 
-    void print();
+    void print(std::ostream& os = std::cout);
 };
 
 #endif
