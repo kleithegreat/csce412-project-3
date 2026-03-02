@@ -1,3 +1,8 @@
+/**
+ * @file LoadBalancer.cpp
+ * @brief Implementation of the LoadBalancer class methods.
+ */
+
 #include "LoadBalancer.h"
 #include <iostream>
 #include <sstream>
@@ -5,14 +10,30 @@
 #include <algorithm>
 #include <iomanip>
 
+/** @brief ANSI escape code to reset terminal color. */
 #define CLR_RESET   "\033[0m"
+/** @brief ANSI escape code for red text. */
 #define CLR_RED     "\033[31m"
+/** @brief ANSI escape code for green text. */
 #define CLR_GREEN   "\033[32m"
+/** @brief ANSI escape code for yellow text. */
 #define CLR_YELLOW  "\033[33m"
+/** @brief ANSI escape code for blue text. */
 #define CLR_BLUE    "\033[34m"
+/** @brief ANSI escape code for cyan text. */
 #define CLR_CYAN    "\033[36m"
+/** @brief ANSI escape code for bold text. */
 #define CLR_BOLD    "\033[1m"
 
+/**
+ * @brief Constructs a LoadBalancer, allocates the initial server pool, and opens the log file.
+ * @param num_servers Initial number of web servers.
+ * @param total_cycles Total simulation clock cycles to run.
+ * @param min_task_time Minimum task processing time.
+ * @param max_task_time Maximum task processing time.
+ * @param scale_cooldown Cooldown cycles between scaling operations.
+ * @param log_filename Name of the log file (defaults to "lb_log.txt").
+ */
 LoadBalancer::LoadBalancer(int num_servers, int total_cycles, int min_task_time,
                            int max_task_time, int scale_cooldown,
                            const std::string& log_filename)
@@ -33,6 +54,9 @@ LoadBalancer::LoadBalancer(int num_servers, int total_cycles, int min_task_time,
     }
 }
 
+/**
+ * @brief Destructor. Frees all dynamically allocated servers and closes the log file.
+ */
 LoadBalancer::~LoadBalancer() {
     for (auto* server : servers) {
         delete server;
@@ -43,10 +67,20 @@ LoadBalancer::~LoadBalancer() {
     }
 }
 
+/**
+ * @brief Adds an IP range to the blocked list (firewall).
+ * @param low Lower bound IP address (inclusive).
+ * @param high Upper bound IP address (inclusive).
+ */
 void LoadBalancer::addBlockedRange(const std::string& low, const std::string& high) {
     blocked_ranges.emplace_back(low, high);
 }
 
+/**
+ * @brief Checks whether an IP address falls within any blocked range.
+ * @param ip The IPv4 address string to check.
+ * @return True if the IP is blocked, false otherwise.
+ */
 bool LoadBalancer::isBlocked(const std::string& ip) const {
     for (const auto& r : blocked_ranges) {
         if (r.contains(ip)) {
@@ -56,6 +90,11 @@ bool LoadBalancer::isBlocked(const std::string& ip) const {
     return false;
 }
 
+/**
+ * @brief Attempts to add a request to the queue, blocking it if the source IP is firewalled.
+ * @param r The Request to add.
+ * @return True if the request was enqueued, false if it was blocked.
+ */
 bool LoadBalancer::addRequest(const Request& r) {
     if (isBlocked(r.ip_in)) {
         total_requests_blocked++;
@@ -70,6 +109,9 @@ bool LoadBalancer::addRequest(const Request& r) {
     return true;
 }
 
+/**
+ * @brief Generates the initial request queue with num_servers * 100 random requests.
+ */
 void LoadBalancer::generateInitialQueue() {
     int count = num_servers * 100;
     logMessage("Generating an initial queue of " + std::to_string(count) + " requests");
@@ -83,6 +125,9 @@ void LoadBalancer::generateInitialQueue() {
     logMessage("Initial queue size: " + std::to_string(initial_queue_size));
 }
 
+/**
+ * @brief Distributes pending requests from the queue to all idle servers.
+ */
 void LoadBalancer::distributeRequests() {
     for (auto* server : servers) {
         if (!server->isBusy() && !queue.isEmpty()) {
@@ -98,6 +143,13 @@ void LoadBalancer::distributeRequests() {
     }
 }
 
+/**
+ * @brief Evaluates queue pressure and scales the server pool up or down.
+ *
+ * If the queue size exceeds 80 * server_count, a new server is added.
+ * If the queue size falls below 50 * server_count, an idle server is removed.
+ * Scaling operations are subject to a cooldown period.
+ */
 void LoadBalancer::scaleServers() {
     if (cooldown_remaining > 0) {
         cooldown_remaining--;
@@ -132,10 +184,16 @@ void LoadBalancer::scaleServers() {
     }
 }
 
+/**
+ * @brief Allocates a new WebServer with an auto-incremented ID and adds it to the pool.
+ */
 void LoadBalancer::addServer() {
     servers.push_back(new WebServer(next_server_id++));
 }
 
+/**
+ * @brief Removes an idle server from the pool. If all servers are busy, removes the last one.
+ */
 void LoadBalancer::removeServer() {
     for (int i = servers.size() - 1; i >= 0; i--) {
         if (!servers[i]->isBusy()) {
@@ -150,6 +208,18 @@ void LoadBalancer::removeServer() {
     }
 }
 
+/**
+ * @brief Logs a message to the console with ANSI color coding and to the log file.
+ *
+ * Color is determined by keywords in the message:
+ * - "BLOCKED" -> red
+ * - "SCALING UP/DOWN" -> yellow
+ * - "COMPLETED" -> green
+ * - "STATUS" -> cyan
+ * - "SUMMARY" -> bold
+ *
+ * @param message The message string to log.
+ */
 void LoadBalancer::logMessage(const std::string& message) {
     std::string color = CLR_RESET;
     if (message.find("BLOCKED") != std::string::npos)       color = CLR_RED;
@@ -166,6 +236,16 @@ void LoadBalancer::logMessage(const std::string& message) {
     }
 }
 
+/**
+ * @brief Runs the main simulation loop.
+ *
+ * Each clock cycle:
+ * 1. Generates 0-2 random new requests.
+ * 2. Distributes queued requests to idle servers.
+ * 3. Ticks each server (advancing their processing).
+ * 4. Evaluates auto-scaling.
+ * 5. Logs a status update every 1000 cycles.
+ */
 void LoadBalancer::run() {
     logMessage("Load Balancer Starting");
     logMessage("Servers: " + std::to_string(num_servers) +
@@ -202,7 +282,7 @@ void LoadBalancer::run() {
         if (clock_cycle % 1000 == 0) {
             int busy_count = 0;
             for (auto* s : servers) if (s->isBusy()) busy_count++;
-            
+
             std::ostringstream oss;
             oss << "--- STATUS: Cycle " << clock_cycle
                 << " | Queue: " << queue.size()
@@ -219,6 +299,12 @@ void LoadBalancer::run() {
     printSummary();
 }
 
+/**
+ * @brief Prints a summary of all simulation statistics to the console and log file.
+ *
+ * Includes initial/final server counts, scaling events, queue metrics,
+ * task time range, request counts, and active/idle server breakdown.
+ */
 void LoadBalancer::printSummary() {
     int busy_count = 0;
     int idle_count = 0;
