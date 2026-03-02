@@ -5,6 +5,14 @@
 #include <algorithm>
 #include <iomanip>
 
+#define CLR_RESET   "\033[0m"
+#define CLR_RED     "\033[31m"
+#define CLR_GREEN   "\033[32m"
+#define CLR_YELLOW  "\033[33m"
+#define CLR_BLUE    "\033[34m"
+#define CLR_CYAN    "\033[36m"
+#define CLR_BOLD    "\033[1m"
+
 LoadBalancer::LoadBalancer(int num_servers, int total_cycles, int min_task_time,
                            int max_task_time, int scale_cooldown,
                            const std::string& log_filename)
@@ -143,7 +151,15 @@ void LoadBalancer::removeServer() {
 }
 
 void LoadBalancer::logMessage(const std::string& message) {
-    std::cout << "[Cycle " << clock_cycle << "] " << message << std::endl;
+    std::string color = CLR_RESET;
+    if (message.find("BLOCKED") != std::string::npos)       color = CLR_RED;
+    else if (message.find("SCALING UP") != std::string::npos)   color = CLR_YELLOW;
+    else if (message.find("SCALING DOWN") != std::string::npos) color = CLR_YELLOW;
+    else if (message.find("COMPLETED") != std::string::npos)    color = CLR_GREEN;
+    else if (message.find("STATUS") != std::string::npos)       color = CLR_CYAN;
+    else if (message.find("SUMMARY") != std::string::npos)      color = CLR_BOLD;
+
+    std::cout << color << "[Cycle " << clock_cycle << "] " << message << CLR_RESET << std::endl;
 
     if (log_file.is_open()) {
         log_file << "[Cycle " << clock_cycle << "] " << message << std::endl;
