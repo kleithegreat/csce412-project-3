@@ -138,7 +138,7 @@ void LoadBalancer::distributeRequests() {
             oss << "Assigned request ";
             r.print(oss);
             oss << " to Server " << server->getId();
-            logMessage(oss.str());
+            logMessage(oss.str(), false);
         }
     }
 }
@@ -220,19 +220,20 @@ void LoadBalancer::removeServer() {
  *
  * @param message The message string to log.
  */
-void LoadBalancer::logMessage(const std::string& message) {
-    std::string color = CLR_RESET;
-    if (message.find("BLOCKED") != std::string::npos)       color = CLR_RED;
-    else if (message.find("SCALING UP") != std::string::npos)   color = CLR_YELLOW;
-    else if (message.find("SCALING DOWN") != std::string::npos) color = CLR_YELLOW;
-    else if (message.find("COMPLETED") != std::string::npos)    color = CLR_GREEN;
-    else if (message.find("STATUS") != std::string::npos)       color = CLR_CYAN;
-    else if (message.find("SUMMARY") != std::string::npos)      color = CLR_BOLD;
-
-    std::cout << color << "[Cycle " << clock_cycle << "] " << message << CLR_RESET << std::endl;
-
+void LoadBalancer::logMessage(const std::string& message, bool terminal) {
     if (log_file.is_open()) {
         log_file << "[Cycle " << clock_cycle << "] " << message << std::endl;
+    }
+
+    if (terminal) {
+        std::string color = CLR_RESET;
+        if (message.find("BLOCKED") != std::string::npos)        color = CLR_RED;
+        else if (message.find("SCALING") != std::string::npos)    color = CLR_YELLOW;
+        else if (message.find("COMPLETED") != std::string::npos)  color = CLR_GREEN;
+        else if (message.find("STATUS") != std::string::npos)     color = CLR_CYAN;
+        else if (message.find("SUMMARY") != std::string::npos)    color = CLR_BOLD;
+
+        std::cout << color << "[Cycle " << clock_cycle << "] " << message << CLR_RESET << std::endl;
     }
 }
 
@@ -273,7 +274,7 @@ void LoadBalancer::run() {
                 std::ostringstream oss;
                 oss << "Server " << server->getId() << " COMPLETED request ";
                 server->getCurrentRequest().print(oss);
-                logMessage(oss.str());
+                logMessage(oss.str(), false);
             }
         }
 

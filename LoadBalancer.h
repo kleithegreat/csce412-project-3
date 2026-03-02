@@ -113,7 +113,7 @@ private:
      * @brief Logs a message to both the console (with color) and the log file.
      * @param message The message string to log.
      */
-    void logMessage(const std::string& message);
+    void logMessage(const std::string& message, bool terminal = true);
 
 public:
     /**
